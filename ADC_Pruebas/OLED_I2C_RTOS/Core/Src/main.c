@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MAX		100
+#define MAX		200
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,6 +46,8 @@ DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart2;
 
 
@@ -53,7 +55,6 @@ UART_HandleTypeDef huart2;
 
 uint32_t Dato[MAX];
 uint32_t Buffer[MAX];
-int vect[MAX];
 char adc_char[10];
 
 /* USER CODE END PV */
@@ -65,6 +66,7 @@ static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM2_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -130,28 +132,59 @@ void grafico(void){
 	}
 }
 
+int trigger_level = 1000;
+int flag;
+int trigger_point = 1;
+
 void senoidal_moviendose(void){
 
-	//static int vect[largo] = {0};
-	//static double x = 0.0;
-	int y_1 = 0, y_2=0;
+	int y1=0, y2=0, y3 = 0, y4 = 0;
+	int x1 = 0, x2 = 0, x3 = 0, x4 = 0;
+	static int previous_trigger_point = 1;
 
-	//guardo en la ultima posicion del vector el valor de la senoidal
-	//vect[MAX-1] = Buffer;
-	//x = x + 0.12;
+	static int erase_buffer[MAX];
 
-	// desplazo la senoidal
-	//for(int i = 0; i < MAX-1; i++)
-		//vect[i] = vect[i + 1];
+	if(flag == 1)
+	{
+		trigger_point = 1;
+		for(int i = 0; i <= 98; i++)
+		{
+			// flanco descendente
+			if((Buffer[i] >= trigger_level + 10) && (Buffer[i+1]) <= trigger_level - 10)
+			{
+				trigger_point = i;
+				break;
+			}
+		}
 
-	 for (int k = 0; k <= 98; k++){
-	    y_1 = map(Buffer[k], 0, 4095, 63, 9); 				// convert to plot
-		y_2 = map(Buffer[k+1], 0, 4095, 63, 9);
-		ssd1306_Line(k + 27, y_1, k + 28, y_2, White);
-	 }
+		for (int k = 0; k <= 98; k++){
 
-	 ssd1306_SetCursor(0, 0);
-	 ssd1306_WriteString("Sine", Font_6x8, White);
+			x1 = k + previous_trigger_point;
+			x2 = x1 + 1;
+
+			x3 = k + trigger_point;
+			x4 = x3 + 1;
+
+
+			y1 = erase_buffer[x1];
+			y2 = erase_buffer[x2];
+			y3 = map(Buffer[x3], 0, 4095, 63, 9); 				// convert to plot
+			y4 = map(Buffer[x4], 0, 4095, 63, 9);
+			//ssd1306_Line(k + 27, y1, k + 28, y2, Black);
+			ssd1306_Line(k + 27, y3, k + 28, y4, White);
+		 }
+
+		for (int x = 0; x < MAX; x++)
+		{
+			erase_buffer[x] = Buffer[x];
+		}
+			previous_trigger_point = trigger_point;
+
+		 ssd1306_SetCursor(0, 0);
+		 ssd1306_WriteString("Sine", Font_6x8, White);
+
+		 flag = 0;
+	}
 }
 
 void Mostrar_pantalla(void *pvParameters){
@@ -165,7 +198,7 @@ void Mostrar_pantalla(void *pvParameters){
 		ssd1306_SetCursor(84, 0);
 		ssd1306_WriteString(adc_char, Font_6x8, White);
 		ssd1306_UpdateScreen();
-		vTaskDelay(30/portTICK_RATE_MS);
+		vTaskDelay(100/portTICK_RATE_MS);
 	}
 }
 
@@ -182,8 +215,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 
 	// Cargamos MAX muestras del ADC en un buffer
 	// Para mostrar en el display
+	flag = 1;
 	for(int i = 0; i<MAX; i++)
 		Buffer[i] = Dato[i];
+
+
 }
 
 void Cambiar_Modo(void *pvParameters){
@@ -198,6 +234,7 @@ void Init_Sistema(void *pvParameters){
 
 	ssd1306_Init();
 	HAL_ADC_Start_DMA(&hadc1, Dato, 100);
+	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
 	vTaskDelete(NULL);
 
 }
@@ -240,6 +277,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_I2C1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -418,6 +456,55 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 10000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
+  sConfigOC.Pulse = 1;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
 
 }
 
