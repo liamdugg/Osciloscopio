@@ -50,7 +50,7 @@ TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 
-
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 
 uint32_t Dato[MAX];
@@ -148,10 +148,13 @@ void senoidal_moviendose(void){
 	{
 		trigger_point = 1;
 
+		for(int i = 0; i<MAX; i++)
+				Buffer[i] = Dato[i];
+
 		for(int i = 0; i <= 98; i++)
 		{
 			// flanco descendente
-			if((Buffer[i] >= trigger_level + 10) && (Buffer[i+1]) <= trigger_level - 10)
+			if((Buffer[i] > trigger_level ) && (Buffer[i+1]) < trigger_level )
 			{
 				trigger_point = i;
 				break;
@@ -180,10 +183,8 @@ void senoidal_moviendose(void){
 
 		previous_trigger_point = trigger_point;
 
-		 ssd1306_SetCursor(0, 0);
-		 ssd1306_WriteString("Sine", Font_6x8, White);
-
 		 flag = 0;
+		 HAL_ADC_Start_DMA(&hadc1, Dato, MAX);
 	}
 }
 
@@ -194,11 +195,8 @@ void Mostrar_pantalla(void *pvParameters){
 	while(1){
 		grafico();
 		senoidal_moviendose();
-		int_to_char(Buffer[0], adc_char);
-		ssd1306_SetCursor(84, 0);
-		ssd1306_WriteString(adc_char, Font_6x8, White);
 		ssd1306_UpdateScreen();
-		vTaskDelay(100/portTICK_RATE_MS);
+		vTaskDelay(17/portTICK_RATE_MS);
 	}
 }
 
@@ -216,9 +214,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	// Cargamos MAX muestras del ADC en un buffer
 	// Para mostrar en el display
 	flag = 1;
-	for(int i = 0; i<MAX; i++)
-		Buffer[i] = Dato[i];
-
 
 }
 
@@ -233,10 +228,9 @@ void Enviar_USB(void *pvParameters){
 void Init_Sistema(void *pvParameters){
 
 	ssd1306_Init();
-	HAL_ADC_Start_DMA(&hadc1, Dato, 100);
-	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
+	HAL_ADC_Start_DMA(&hadc1, Dato, MAX);
+	//HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
 	vTaskDelete(NULL);
-
 }
 /* USER CODE END PFP */
 
@@ -300,8 +294,6 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-
-
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(Mostrar_pantalla, "PANTALLA", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
@@ -480,7 +472,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10000;
+  htim2.Init.Period = 1500;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
@@ -494,7 +486,7 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
-  sConfigOC.Pulse = 1;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
