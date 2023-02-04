@@ -147,6 +147,7 @@ void senoidal_moviendose(void){
 	if(flag == 1)
 	{
 		trigger_point = 1;
+
 		for(int i = 0; i <= 98; i++)
 		{
 			// flanco descendente
@@ -161,24 +162,23 @@ void senoidal_moviendose(void){
 
 			x1 = k + previous_trigger_point;
 			x2 = x1 + 1;
-
 			x3 = k + trigger_point;
 			x4 = x3 + 1;
-
 
 			y1 = erase_buffer[x1];
 			y2 = erase_buffer[x2];
 			y3 = map(Buffer[x3], 0, 4095, 63, 9); 				// convert to plot
 			y4 = map(Buffer[x4], 0, 4095, 63, 9);
+
 			//ssd1306_Line(k + 27, y1, k + 28, y2, Black);
 			ssd1306_Line(k + 27, y3, k + 28, y4, White);
 		 }
 
-		for (int x = 0; x < MAX; x++)
-		{
+		for (int x = 0; x < MAX; x++){
 			erase_buffer[x] = Buffer[x];
 		}
-			previous_trigger_point = trigger_point;
+
+		previous_trigger_point = trigger_point;
 
 		 ssd1306_SetCursor(0, 0);
 		 ssd1306_WriteString("Sine", Font_6x8, White);
