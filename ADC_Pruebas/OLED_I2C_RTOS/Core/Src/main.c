@@ -43,15 +43,18 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
+
 I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 int flag;
 char adc_char[10];
 int trigger_point = 1;
-int trigger_level = 1000;
+int trigger_level = 3000;
 
 uint32_t buffer_adc[MAX];
 uint32_t buffer_display[MAX];
@@ -100,9 +103,40 @@ void display_plot_grilla(void){
 
 	ssd1306_Fill(Black);
 	ssd1306_SetCursor(0, 0);
+
+	/* altura disponible para texto superior
+	//		 				y = 0
+	//						TEXTO SUPERIOR
+	// 						y = 8
+	 * 					   |
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 * 							GRAFRICO
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * 					   |
+	 *
+	 * x=0				x=23
+	 */
+
 	ssd1306_VLine(26, 9, 55, White);   // left vartical line
 	ssd1306_VLine(127, 9, 3, White);   // right vrtical line up
-	ssd1306_VLine(127, 61, 3, White);  // right vrtical line bottom
+	ssd1306_VLine(127, 60, 3, White);  // right vrtical line bottom
 
 	ssd1306_HLine(24, 9, 7, White);    // Max value auxiliary mark
 	ssd1306_HLine(24, 36, 2, White);
@@ -129,15 +163,22 @@ void display_plot_grilla(void){
 			ssd1306_VLine(x, y, 2, White); // Draw 3 vertical lines with dotted lines
 		}
 	}
+	ssd1306_SetCursor(14, 0);
+	//ssd1306_WriteString("AC", Font_6x8, White);
+	ssd1306_WriteString("XX.XKH rmsX.XV XXuS", Font_6x8, White);
+
+	ssd1306_SetCursor(6, 9);
+	ssd1306_WriteString("1.0", Font_6x8, White);
+	ssd1306_SetCursor(6, 33);
+	ssd1306_WriteString("5.0", Font_6x8, White);
+	ssd1306_SetCursor(6, 56);
+	ssd1306_WriteString("0.0", Font_6x8, White);
 }
 
 void display_plot_signal(void){
 
-	int y1=0, y2=0, y3 = 0, y4 = 0;
-	int x1 = 0, x2 = 0, x3 = 0, x4 = 0;
-	static int previous_trigger_point = 1;
-
-	static int erase_buffer[MAX];
+	int y3 = 0, y4 = 0;
+	int x3 = 0, x4 = 0;
 
 	if(flag == 1)
 	{
@@ -158,28 +199,24 @@ void display_plot_signal(void){
 
 		for (int k = 0; k <= 98; k++){
 
-			x1 = k + previous_trigger_point;
-			x2 = x1 + 1;
 			x3 = k + trigger_point;
 			x4 = x3 + 1;
 
-			y1 = erase_buffer[x1];
-			y2 = erase_buffer[x2];
 			y3 = map(buffer_display[x3], 0, 4095, 63, 9); 				// convert to plot
 			y4 = map(buffer_display[x4], 0, 4095, 63, 9);
 
-			ssd1306_Line(k + 27, y1, k + 28, y2, Black);
 			ssd1306_Line(k + 27, y3, k + 28, y4, White);
 		 }
 
-		for (int x = 0; x < MAX; x++){
-			erase_buffer[x] = buffer_display[x];
-		}
-
 		flag = 0;
-		previous_trigger_point = trigger_point;
 		HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 	}
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	trigger_level += 300;
+
+	if(trigger_level > 3800)
+		trigger_level = 100;
 }
 
 void display_plot_trigger(void){
@@ -187,7 +224,13 @@ void display_plot_trigger(void){
 	int trigger_actual = 0;
 
 	trigger_actual = map(trigger_level, 0, 4095, 63, 9);
-	ssd1306_HLine(26, trigger_actual, 100, White);
+
+	//ssd1306_HLine(26, trigger_actual, 100, White);
+
+	// dibujo el triangulo
+	ssd1306_VLine(127, trigger_actual-2, 4, White);
+	ssd1306_VLine(126, trigger_actual-1, 2, White);
+	ssd1306_DrawPixel(125, trigger_actual, White);
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
@@ -202,7 +245,7 @@ void Init_Sistema(void *pvParameters){
 
 	ssd1306_Init();
 	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
-	//HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
+	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
 	vTaskDelete(NULL);
 }
 
@@ -287,6 +330,7 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(Init_Sistema,"INICIALIZAR",configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL);
@@ -357,7 +401,6 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
-
 /**
   * @brief ADC1 Initialization Function
   * @param None
@@ -563,7 +606,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
@@ -572,6 +615,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
