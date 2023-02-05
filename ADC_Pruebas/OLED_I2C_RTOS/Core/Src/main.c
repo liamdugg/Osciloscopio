@@ -43,19 +43,18 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
-
 I2C_HandleTypeDef hi2c1;
-
 TIM_HandleTypeDef htim2;
-
 UART_HandleTypeDef huart2;
 
-osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
-
-uint32_t Dato[MAX];
-uint32_t Buffer[MAX];
+int flag;
 char adc_char[10];
+int trigger_point = 1;
+int trigger_level = 1000;
+
+uint32_t buffer_adc[MAX];
+uint32_t buffer_display[MAX];
 
 /* USER CODE END PV */
 
@@ -97,7 +96,7 @@ float map(float x, float in_min, float in_max, float out_min, float out_max){
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void grafico(void){
+void display_plot_grilla(void){
 
 	ssd1306_Fill(Black);
 	ssd1306_SetCursor(0, 0);
@@ -132,11 +131,7 @@ void grafico(void){
 	}
 }
 
-int trigger_level = 1000;
-int flag;
-int trigger_point = 1;
-
-void senoidal_moviendose(void){
+void display_plot_signal(void){
 
 	int y1=0, y2=0, y3 = 0, y4 = 0;
 	int x1 = 0, x2 = 0, x3 = 0, x4 = 0;
@@ -149,12 +144,12 @@ void senoidal_moviendose(void){
 		trigger_point = 1;
 
 		for(int i = 0; i<MAX; i++)
-				Buffer[i] = Dato[i];
+				buffer_display[i] = buffer_adc[i];
 
 		for(int i = 0; i <= 98; i++)
 		{
 			// flanco descendente
-			if((Buffer[i] > trigger_level ) && (Buffer[i+1]) < trigger_level )
+			if((buffer_display[i] > trigger_level ) && (buffer_display[i+1]) < trigger_level )
 			{
 				trigger_point = i;
 				break;
@@ -170,51 +165,56 @@ void senoidal_moviendose(void){
 
 			y1 = erase_buffer[x1];
 			y2 = erase_buffer[x2];
-			y3 = map(Buffer[x3], 0, 4095, 63, 9); 				// convert to plot
-			y4 = map(Buffer[x4], 0, 4095, 63, 9);
+			y3 = map(buffer_display[x3], 0, 4095, 63, 9); 				// convert to plot
+			y4 = map(buffer_display[x4], 0, 4095, 63, 9);
 
-			//ssd1306_Line(k + 27, y1, k + 28, y2, Black);
+			ssd1306_Line(k + 27, y1, k + 28, y2, Black);
 			ssd1306_Line(k + 27, y3, k + 28, y4, White);
 		 }
 
 		for (int x = 0; x < MAX; x++){
-			erase_buffer[x] = Buffer[x];
+			erase_buffer[x] = buffer_display[x];
 		}
 
+		flag = 0;
 		previous_trigger_point = trigger_point;
-
-		 flag = 0;
-		 HAL_ADC_Start_DMA(&hadc1, Dato, MAX);
+		HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 	}
+}
+
+void display_plot_trigger(void){
+
+	int trigger_actual = 0;
+
+	trigger_actual = map(trigger_level, 0, 4095, 63, 9);
+	ssd1306_HLine(26, trigger_actual, 100, White);
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	flag = 1;
+}
+
+
+
+/* ------------------------ Tareas Free RTOS ------------------------ */
+
+void Init_Sistema(void *pvParameters){
+
+	ssd1306_Init();
+	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
+	//HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
+	vTaskDelete(NULL);
 }
 
 void Mostrar_pantalla(void *pvParameters){
 
-	//ssd1306_Init();
-
 	while(1){
-		grafico();
-		senoidal_moviendose();
+		display_plot_grilla();
+		display_plot_signal();
+		display_plot_trigger();
 		ssd1306_UpdateScreen();
 		vTaskDelay(17/portTICK_RATE_MS);
 	}
-}
-
-void Leer_ADC(void *pvParameters){
-
-	//HAL_ADC_Start_DMA(&hadc1, Dato, 100);
-
-	while(1){
-		vTaskDelay(20/portTICK_RATE_MS);
-	}
-}
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-
-	// Cargamos MAX muestras del ADC en un buffer
-	// Para mostrar en el display
-	flag = 1;
-
 }
 
 void Cambiar_Modo(void *pvParameters){
@@ -225,13 +225,6 @@ void Enviar_USB(void *pvParameters){
 
 }
 
-void Init_Sistema(void *pvParameters){
-
-	ssd1306_Init();
-	HAL_ADC_Start_DMA(&hadc1, Dato, MAX);
-	//HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
-	vTaskDelete(NULL);
-}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -296,11 +289,11 @@ int main(void)
   /* definition and creation of defaultTask */
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  xTaskCreate(Init_Sistema,"INICIALIZAR",configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL);
   xTaskCreate(Mostrar_pantalla, "PANTALLA", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
-  //xTaskCreate(Leer_ADC,"ADC", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
   //xTaskCreate(Enviar_USB,"USB", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
   //xTaskCreate(Cambiar_Modo,"MODO",configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
-  xTaskCreate(Init_Sistema,"INICIALIZAR",configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL);
+
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
