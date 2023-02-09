@@ -47,9 +47,10 @@ DMA_HandleTypeDef hdma_adc1;
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim5;
 
-UART_HandleTypeDef huart2;
-
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 int flag;
 char adc_char[10];
@@ -65,10 +66,11 @@ uint32_t buffer_display[MAX];
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_TIM5_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -103,36 +105,6 @@ void display_plot_grilla(void){
 
 	ssd1306_Fill(Black);
 	ssd1306_SetCursor(0, 0);
-
-	/* altura disponible para texto superior
-	//		 				y = 0
-	//						TEXTO SUPERIOR
-	// 						y = 8
-	 * 					   |
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 * 							GRAFRICO
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * 					   |
-	 *
-	 * x=0				x=23
-	 */
 
 	ssd1306_VLine(26, 9, 55, White);   // left vartical line
 	ssd1306_VLine(127, 9, 3, White);   // right vrtical line up
@@ -182,6 +154,7 @@ void display_plot_signal(void){
 
 	if(flag == 1)
 	{
+		//ssd1306_Fill(Black);
 		trigger_point = 1;
 
 		for(int i = 0; i<MAX; i++)
@@ -196,6 +169,7 @@ void display_plot_signal(void){
 				break;
 			}
 		}
+
 
 		for (int k = 0; k <= 98; k++){
 
@@ -234,21 +208,36 @@ void display_plot_trigger(void){
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	flag = 1;
+		flag = 1;
 }
 
 
+/*
+void RMS(void)
+{
+	#include <math.h>
+	for(int i=0; i<NS; i++){
+		adc1 = (float32_t)adc_buffer[i]*3.3/4096.0;
+		valorMax = adc1*adc1+valorMax;
+	}
+	pResultado = sqrt(valorMax / (float32_t) blockSize);
+	valorMax = 0;
+}
+*/
 
 /* ------------------------ Tareas Free RTOS ------------------------ */
 
 void Init_Sistema(void *pvParameters){
 
 	ssd1306_Init();
-	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
+	HAL_TIM_Base_Start(&htim3);
+	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
+	HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
 	vTaskDelete(NULL);
 }
-
 void Mostrar_pantalla(void *pvParameters){
 
 	while(1){
@@ -256,7 +245,7 @@ void Mostrar_pantalla(void *pvParameters){
 		display_plot_signal();
 		display_plot_trigger();
 		ssd1306_UpdateScreen();
-		vTaskDelay(17/portTICK_RATE_MS);
+		vTaskDelay(30/portTICK_RATE_MS);
 	}
 }
 
@@ -304,10 +293,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -330,6 +320,8 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -341,13 +333,12 @@ int main(void)
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
+  osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
   vTaskStartScheduler();
-
   while(1){
     /* USER CODE END WHILE */
 
@@ -401,6 +392,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
+
 /**
   * @brief ADC1 Initialization Function
   * @param None
@@ -537,35 +529,92 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief USART2 Initialization Function
+  * @brief TIM3 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART2_UART_Init(void)
+static void MX_TIM3_Init(void)
 {
 
-  /* USER CODE BEGIN USART2_Init 0 */
+  /* USER CODE BEGIN TIM3_Init 0 */
+		//TIMER TRIGGER
+  /* USER CODE END TIM3_Init 0 */
 
-  /* USER CODE END USART2_Init 0 */
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN USART2_Init 1 */
+  /* USER CODE BEGIN TIM3_Init 1 */
 
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 8399;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 999;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART2_Init 2 */
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
 
-  /* USER CODE END USART2_Init 2 */
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 0;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 4294967295;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
 
 }
 
@@ -603,18 +652,31 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, MUX_SEL0_Pin|MUX_SEL2_Pin, GPIO_PIN_SET);
+
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin MUX_SEL1_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin|MUX_SEL1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : MUX_SEL0_Pin MUX_SEL2_Pin */
+  GPIO_InitStruct.Pin = MUX_SEL0_Pin|MUX_SEL2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
@@ -661,7 +723,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
   /* USER CODE END Callback 1 */
 }
 
