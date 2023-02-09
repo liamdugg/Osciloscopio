@@ -233,8 +233,8 @@ void Init_Sistema(void *pvParameters){
 	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
 	HAL_TIM_Base_Start(&htim3);
 	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
-	HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
 	vTaskDelete(NULL);
 }
