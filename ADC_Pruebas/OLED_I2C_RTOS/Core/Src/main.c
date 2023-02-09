@@ -33,6 +33,15 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define MAX		200
+
+#define ATEN_03		6	//A0
+#define ATEN_05		7	//A1
+#define AMP_1		0	//A2
+#define AMP_3		1	//A3
+#define AMP_5		2	//A4
+#define AMP_10		3	//A5
+#define AMP_31		4	//A6
+#define AMP_50		5	//A7
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,12 +59,12 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim5;
 
-osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 int flag;
 char adc_char[10];
 int trigger_point = 1;
 int trigger_level = 3000;
+int contador;
 
 uint32_t buffer_adc[MAX];
 uint32_t buffer_display[MAX];
@@ -100,6 +109,102 @@ void int_to_char(uint32_t num, char texto[]){
 float map(float x, float in_min, float in_max, float out_min, float out_max){
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+void actualizar_escala()
+{
+switch(contador)
+	{
+		case AMP_1://A2
+			ssd1306_SetCursor(115, 55);
+			ssd1306_WriteString("x1", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("1,6", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-1,6", Font_6x8, White);
+		break;
+		case AMP_3://A3
+			ssd1306_SetCursor(115, 55);
+			ssd1306_WriteString("x3", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("0,6", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-0,6", Font_6x8, White);
+		break;
+		case AMP_5://A4
+			ssd1306_SetCursor(115, 55);
+			ssd1306_WriteString("x5", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("0,3", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-0,3", Font_6x8, White);
+		break;
+		case AMP_10://A5
+			ssd1306_SetCursor(109, 55);
+			ssd1306_WriteString("x10", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("0,1", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-0,1", Font_6x8, White);
+		break;
+		case AMP_31://A6
+			ssd1306_SetCursor(109, 55);
+			ssd1306_WriteString("x31", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("52m", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-52m", Font_6x8, White);
+		break;
+		case AMP_50://A7
+			ssd1306_SetCursor(109, 55);
+			ssd1306_WriteString("x50", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("33m", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-33m", Font_6x8, White);
+		break;
+		case ATEN_03://A0
+			ssd1306_SetCursor(109, 55);
+			ssd1306_WriteString("x.3", Font_6x8, White);
+			ssd1306_SetCursor(17, 9);
+			ssd1306_WriteString("6", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(11, 56);
+			ssd1306_WriteString("-6", Font_6x8, White);
+		break;
+		case ATEN_05://A1
+			ssd1306_SetCursor(109, 55);
+			ssd1306_WriteString("x.5", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("3,3", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-3,3", Font_6x8, White);
+		break;
+		default://A2
+			ssd1306_SetCursor(115, 55);
+			ssd1306_WriteString("x1", Font_6x8, White);
+			ssd1306_SetCursor(6, 9);
+			ssd1306_WriteString("1,6", Font_6x8, White);
+			ssd1306_SetCursor(17, 33);
+			ssd1306_WriteString("0", Font_6x8, White);
+			ssd1306_SetCursor(0, 56);
+			ssd1306_WriteString("-1,6", Font_6x8, White);
+		break;
+	}
+}
 
 void display_plot_grilla(void){
 
@@ -136,16 +241,34 @@ void display_plot_grilla(void){
 		}
 	}
 	ssd1306_SetCursor(14, 0);
-	//ssd1306_WriteString("AC", Font_6x8, White);
 	ssd1306_WriteString("XX.XKH rmsX.XV XXuS", Font_6x8, White);
-
-	ssd1306_SetCursor(6, 9);
-	ssd1306_WriteString("1.0", Font_6x8, White);
-	ssd1306_SetCursor(6, 33);
-	ssd1306_WriteString("5.0", Font_6x8, White);
-	ssd1306_SetCursor(6, 56);
-	ssd1306_WriteString("0.0", Font_6x8, White);
+	actualizar_escala(contador);
 }
+
+/*
+void Analizar_amplitud(uint32_t *buffer)
+{
+	uint32_t Valor_max;
+
+	for(int i = 1; i< MAX; i++)
+	{
+		if(buffer[i] > buffer[i-1])
+			Valor_max = buffer[i];
+	}
+	if(Valor_max < 2088)
+		Cambiar_MUX(AMP_50);
+	else if(Valor_max>2088 && Valor_max<2112)
+		Cambiar_MUX(AMP_31);
+	else if(Valor_max>2112 && Valor_max<2252)
+		Cambiar_MUX(AMP_10);
+	else if(Valor_max>2252 && Valor_max<2457)
+		Cambiar_MUX(AMP_5);
+	else if(Valor_max>2457 && Valor_max<2699)
+		Cambiar_MUX(AMP_3);
+	else if(Valor_max>2699)
+		Cambiar_MUX(AMP_1);
+}
+*/
 
 void display_plot_signal(void){
 
@@ -160,6 +283,7 @@ void display_plot_signal(void){
 		for(int i = 0; i<MAX; i++)
 				buffer_display[i] = buffer_adc[i];
 
+		//Analizar_amplitud(buffer_display);
 		for(int i = 0; i <= 98; i++)
 		{
 			// flanco descendente
@@ -169,7 +293,6 @@ void display_plot_signal(void){
 				break;
 			}
 		}
-
 
 		for (int k = 0; k <= 98; k++){
 
@@ -181,16 +304,66 @@ void display_plot_signal(void){
 
 			ssd1306_Line(k + 27, y3, k + 28, y4, White);
 		 }
-
 		flag = 0;
 		HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	trigger_level += 300;
+	//trigger_level += 300;
+	//if(trigger_level > 3800)
+		//trigger_level = 100;
+	switch(contador)
+	{
+		case AMP_1://A2
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
 
-	if(trigger_level > 3800)
-		trigger_level = 100;
+		break;
+		case AMP_3://A3
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
+		break;
+		case AMP_5://A4
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_SET);
+		break;
+		case AMP_10://A5
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_SET);
+		break;
+		case AMP_31://A6
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_SET);
+		break;
+		case AMP_50://A7
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_SET);
+		break;
+		case ATEN_03://A0
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
+		break;
+		case ATEN_05://A1
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
+		break;
+		default://A2
+			HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
+		break;
+	}
+	contador++;
+	contador %= 8;
+
 }
 
 void display_plot_trigger(void){
@@ -245,7 +418,7 @@ void Mostrar_pantalla(void *pvParameters){
 		display_plot_signal();
 		display_plot_trigger();
 		ssd1306_UpdateScreen();
-		vTaskDelay(30/portTICK_RATE_MS);
+		vTaskDelay(17/portTICK_RATE_MS);
 	}
 }
 
@@ -320,8 +493,6 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -333,7 +504,6 @@ int main(void)
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
-  osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
