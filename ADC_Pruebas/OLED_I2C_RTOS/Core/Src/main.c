@@ -63,7 +63,7 @@ TIM_HandleTypeDef htim5;
 int flag;
 char adc_char[10];
 int trigger_point = 1;
-int trigger_level = 3000;
+int trigger_level = 2048;
 int contador;
 
 uint32_t buffer_adc[MAX];
@@ -242,7 +242,7 @@ void display_plot_grilla(void){
 	}
 	ssd1306_SetCursor(14, 0);
 	ssd1306_WriteString("XX.XKH rmsX.XV XXuS", Font_6x8, White);
-	actualizar_escala(contador);
+	//
 }
 
 /*
@@ -312,6 +312,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	//trigger_level += 300;
 	//if(trigger_level > 3800)
 		//trigger_level = 100;
+	contador++;
+	contador %= 8;
 	switch(contador)
 	{
 		case AMP_1://A2
@@ -361,9 +363,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			HAL_GPIO_WritePin(MUX_SEL2_GPIO_Port, MUX_SEL2_Pin, GPIO_PIN_RESET);
 		break;
 	}
-	contador++;
-	contador %= 8;
-
 }
 
 void display_plot_trigger(void){
@@ -417,6 +416,7 @@ void Mostrar_pantalla(void *pvParameters){
 		display_plot_grilla();
 		display_plot_signal();
 		display_plot_trigger();
+		actualizar_escala();
 		ssd1306_UpdateScreen();
 		vTaskDelay(17/portTICK_RATE_MS);
 	}

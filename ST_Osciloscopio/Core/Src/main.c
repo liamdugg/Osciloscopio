@@ -154,7 +154,7 @@ void TaskFreucuency (void * parameters)
 					pData[8] = '\r';
 					pData[9] = '\n';
 					HAL_UART_Transmit(&huart2, pData, 10, HAL_MAX_DELAY);
-				}*/
+				}
 			}
 
 
