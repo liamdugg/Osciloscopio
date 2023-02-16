@@ -42,9 +42,11 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 extern uint32_t Wave_LUT[NS];
-uint32_t adc_buffer[1024];
+uint32_t adc_buffer[NS];
 uint8_t bufferTx[2048];
 uint8_t flag = 0;
+int trigger_point = 1;
+int trigger_level = 2048;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -96,15 +98,30 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	  bufferTx[j+1] = (uint8_t)((adc_buffer[i])&0xFF);
 	  j+=2;
 	}
+
 }
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+	/*
+	for(int i = 0; i <= NS; i++)
+	{
+		// flanco descendente
+		if((adc_buffer[i] > trigger_level ) && (adc_buffer[i+1]) < trigger_level )
+		{
+			trigger_point = i;
+			break;
+		}
+	}
+	*/
+}
+
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-
+	/*
 	if(flag){
-		HAL_ADC_Start_DMA(&hadc1, adc_buffer, NS);
+		HAL_ADC_Start_DMA(&hadc1, adc_buffer, 2048);
 		flag = 0;
 	}
-
+	*/
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	xSemaphoreGiveFromISR( xSemaphoreFrecuency0, &xHigherPriorityTaskWoken );
 	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );

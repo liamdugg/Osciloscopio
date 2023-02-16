@@ -214,11 +214,17 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* state)
 	/* Start next USB packet transfer once data processing is completed */
 	static uint32_t k = 0;
 	/* Start next USB packet transfer once data processing is completed */
-	USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS);
-	USBD_CUSTOM_HID_SendReport (&hUsbDeviceFS, &bufferTx[k], 64);
-	k += 64;
-	if(k==2048){
-		flag = 1;
+	if(buffer[0] == '#'){
+		USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS);
+		USBD_CUSTOM_HID_SendReport (&hUsbDeviceFS, &bufferTx[k], 64);
+		k += 64;
+		if(k==2048){
+			HAL_ADC_Start_DMA(&hadc1, adc_buffer, NS);
+			flag = 1;
+			k=0;
+		}
+	}
+	if(buffer[0] == '$'){
 		k=0;
 	}
 	return (USBD_OK);
