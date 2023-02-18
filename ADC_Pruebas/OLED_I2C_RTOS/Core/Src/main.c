@@ -305,8 +305,8 @@ void display_plot_signal(void){
 			ssd1306_Line(k + 27, y3, k + 28, y4, White);
 
 		 }
-		ssd1306_UpdateScreen();
-		ssd1306_Fill(Black);
+		//ssd1306_UpdateScreen();
+		//ssd1306_Fill(Black);
 		if(flag == 2)
 			HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 
@@ -314,9 +314,11 @@ void display_plot_signal(void){
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	/*
 	trigger_level += 300;
 	if(trigger_level > 3800)
 		trigger_level = 100;
+	*/
 	contador++;
 	contador %= 8;
 	switch(contador)
@@ -431,8 +433,10 @@ void Mostrar_pantalla(void *pvParameters){
 
 		display_plot_grilla();
 		display_plot_trigger();
-		actualizar_escala();
 		display_plot_signal();
+		actualizar_escala();
+		ssd1306_UpdateScreen();
+		ssd1306_Fill(Black);
 		vTaskDelay(17/portTICK_RATE_MS);
 
 	}
@@ -736,9 +740,17 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 83;
+  htim3.Init.Prescaler = 2;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 781;
+  htim3.Init.Period = 667;
+  /*
+  htim3.Init.Period = 60;  // fs = 700k y fmin = 4,8KHz
+  htim3.Init.Period = 168; // fs = 250k y fmin = 420Hz
+  htim3.Init.Period = 667;
+  htim3.Init.Period = 2675;
+  htim3.Init.Period = 10769;
+  htim3.Init.Period = 42857;
+  */
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
