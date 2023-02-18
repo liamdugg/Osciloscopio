@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MAX		200
+#define MAX		512
 
 #define ATEN_03		6	//A0
 #define ATEN_05		7	//A1
@@ -67,7 +67,7 @@ int trigger_level = 2048;
 int contador;
 
 uint32_t buffer_adc[MAX];
-uint32_t buffer_display[MAX];
+uint32_t buffer_display[MAX/2];
 
 /* USER CODE END PV */
 
@@ -208,7 +208,7 @@ switch(contador)
 
 void display_plot_grilla(void){
 
-	ssd1306_Fill(Black);
+	//ssd1306_Fill(Black);
 	ssd1306_SetCursor(0, 0);
 
 	ssd1306_VLine(26, 9, 55, White);   // left vartical line
@@ -275,12 +275,12 @@ void display_plot_signal(void){
 	int y3 = 0, y4 = 0;
 	int x3 = 0, x4 = 0;
 
-	if(flag == 1)
+	if(flag)
 	{
 		//ssd1306_Fill(Black);
 		trigger_point = 1;
 
-		for(int i = 0; i<MAX; i++)
+		for(int i = 0; i<MAX/2; i++)
 				buffer_display[i] = buffer_adc[i];
 
 		//Analizar_amplitud(buffer_display);
@@ -303,15 +303,20 @@ void display_plot_signal(void){
 			y4 = map(buffer_display[x4], 0, 4095, 63, 9);
 
 			ssd1306_Line(k + 27, y3, k + 28, y4, White);
+
 		 }
+		ssd1306_UpdateScreen();
+		ssd1306_Fill(Black);
+		if(flag == 2)
+			HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
+
 		flag = 0;
-		HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 	}
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	//trigger_level += 300;
-	//if(trigger_level > 3800)
-		//trigger_level = 100;
+	trigger_level += 300;
+	if(trigger_level > 3800)
+		trigger_level = 100;
 	contador++;
 	contador %= 8;
 	switch(contador)
@@ -379,9 +384,19 @@ void display_plot_trigger(void){
 	ssd1306_DrawPixel(125, trigger_actual, White);
 }
 
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-		flag = 1;
+
+int half, cplt;
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	half++;
+	flag = 1;
 }
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	cplt++;
+	flag = 2;
+}
+
 
 
 /*
@@ -413,14 +428,16 @@ void Init_Sistema(void *pvParameters){
 void Mostrar_pantalla(void *pvParameters){
 
 	while(1){
+
 		display_plot_grilla();
-		display_plot_signal();
 		display_plot_trigger();
 		actualizar_escala();
-		ssd1306_UpdateScreen();
+		display_plot_signal();
 		vTaskDelay(17/portTICK_RATE_MS);
+
 	}
 }
+
 
 void Cambiar_Modo(void *pvParameters){
 
@@ -494,6 +511,7 @@ int main(void)
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
 
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(Init_Sistema,"INICIALIZAR",configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL);
@@ -504,6 +522,7 @@ int main(void)
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
+
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -584,13 +603,13 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = ENABLE;
@@ -668,9 +687,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 8399;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1500;
+  htim2.Init.Period = 250;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
@@ -717,9 +736,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 8399;
+  htim3.Init.Prescaler = 83;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 999;
+  htim3.Init.Period = 781;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
