@@ -431,13 +431,14 @@ void Mostrar_pantalla(void *pvParameters){
 
 	while(1){
 
+		ssd1306_Fill(Black);
 		display_plot_grilla();
 		display_plot_trigger();
 		display_plot_signal();
 		actualizar_escala();
 		ssd1306_UpdateScreen();
-		ssd1306_Fill(Black);
-		vTaskDelay(17/portTICK_RATE_MS);
+
+		vTaskDelay(10/portTICK_RATE_MS);
 
 	}
 }
@@ -737,20 +738,21 @@ static void MX_TIM3_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM3_Init 1 */
+  /*
+  htim3.Init.Period = 60;	fs = 700kHz  fmin = 7,142KHz	fmax = 28,57kHz
+  htim3.Init.Period = 168;	fs = 250kHz  fmin = 2560Hz fmax = 10,24kHz
+  htim3.Init.Period = 667;  fs = 63KHz   fmin = 640Hz fmax = 2560Hz
 
+  htim3.Init.Period = 2675; fs=15,7KHz fmin = 160Hz fmax = 640Hz
+  htim3.Init.Period = 10769; fs=3,9KHz fmin = 40Hz fmax = 160Hz
+  htim3.Init.Period = 42857; fs=980Hz fmin = 10Hz fmax = 40Hz
+  */
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 2;
+  htim3.Init.Prescaler = 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 667;
-  /*
-  htim3.Init.Period = 60;  // fs = 700k y fmin = 4,8KHz
-  htim3.Init.Period = 168; // fs = 250k y fmin = 420Hz
-  htim3.Init.Period = 667;
-  htim3.Init.Period = 2675;
-  htim3.Init.Period = 10769;
-  htim3.Init.Period = 42857;
-  */
+  htim3.Init.Period = 60;
+
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
