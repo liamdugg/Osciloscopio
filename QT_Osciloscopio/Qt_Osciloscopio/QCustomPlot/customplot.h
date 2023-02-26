@@ -13,15 +13,32 @@ public:
     CustomPlot(QWidget *parent = Q_NULLPTR);
     virtual ~CustomPlot() Q_DECL_OVERRIDE;
     void InitGraph();
-    enum Channel{ CH1, CH2, CH3, CH4 };
-    Q_ENUM(Channel)
+    enum unidades{ frecuencia, tiempo, Amplitud, Vrms };
+    SignalData::samplimngFrecuency convertirFS(QString s);
+    SignalData::scaleAmplitud convertirScaleFactor(QString s);
+    QString convertir(QString, unidades);
+    QString convertirFrecuencia(QString);
+    QString convertirPerido(QString);
+    QString convertirAmplitud(QString);
+    QString convertirVrms(QString);
+    /*Dial*/
+    void setRangeDialTime(int xmin, int xmax);
 Q_SIGNALS:
     void itemMoved(QCPAbstractItem *item, QMouseEvent *event);
+
+    void setTimeChange(SignalData::samplimngFrecuency);
     void mesure(SignalData *signalData);
 public slots:
     void pushButtonAutoEscala();
-    void LeerSignal(QVector<double> *dato);
-    void LeerMesure(QString dato);
+    void LeerADC(QVector<double> *dato);
+    void LeerMediciones(QString dato);
+    // QWidget interface
+
+    /*Dial*/
+    void setValueDialTime(int value);
+    void setValueDialVolt(int value);
+    void setRangeDialGraph();
+
     // QWidget interface
 protected:
     virtual void mousePressEvent(QMouseEvent *event) Q_DECL_OVERRIDE;
@@ -30,11 +47,10 @@ protected:
     QVector<double> datoTime;
     QVector<double> datoADC;
     SignalData *signalData;
-    // QWidget interface
+
 public:
     virtual QSize sizeHint() const Q_DECL_OVERRIDE;
-private:
-    Channel canal;
+
 };
 
 #endif // CUSTOMPLOT_H

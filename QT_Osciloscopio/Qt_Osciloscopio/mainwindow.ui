@@ -87,11 +87,14 @@ font: 14pt &quot;Comic Sans MS&quot;;</string>
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="4" column="1">
         <widget class="QLineEdit" name="PeriodoCH1">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: lightgreen; background-color: black; border: 2px solid lightgreen; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>500 uS</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -100,11 +103,14 @@ font: 14pt &quot;Comic Sans MS&quot;;</string>
        </item>
        <item row="2" column="1">
         <widget class="QLineEdit" name="VrmsCH1">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: lightgreen; background-color: black; border: 2px solid lightgreen; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>0,707 V</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -154,11 +160,14 @@ background-color: lightgreen;</string>
        </item>
        <item row="1" column="1">
         <widget class="QLineEdit" name="AmplitudCH1">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: lightgreen; background-color: black; border: 2px solid lightgreen; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>1 V</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -177,11 +186,14 @@ background-color: lightgreen;</string>
        </item>
        <item row="3" column="1">
         <widget class="QLineEdit" name="FrecuenciaCH1">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: lightgreen; background-color: black; border: 2px solid lightgreen; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>2 KHz</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -654,11 +666,14 @@ background-color: gold;</string>
        </item>
        <item row="1" column="1">
         <widget class="QLineEdit" name="AmplitudCH2">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: yellow; background-color: black; border: 2px solid yellow; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>1 V</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -677,11 +692,14 @@ background-color: gold;</string>
        </item>
        <item row="2" column="1">
         <widget class="QLineEdit" name="VrmsCH2">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: yellow; background-color: black; border: 2px solid yellow; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>0,707 V</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -700,11 +718,14 @@ background-color: gold;</string>
        </item>
        <item row="3" column="1">
         <widget class="QLineEdit" name="FrecuenciaCH2">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: yellow; background-color: black; border: 2px solid yellow; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>2 KHz</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -723,11 +744,14 @@ background-color: gold;</string>
        </item>
        <item row="4" column="1">
         <widget class="QLineEdit" name="PeriodoCH2">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">color: yellow; background-color: black; border: 2px solid yellow; font: 14pt &quot;Comic Sans MS&quot;;</string>
          </property>
          <property name="text">
-          <string>500 uS</string>
+          <string>---</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -823,7 +847,7 @@ border-color: black;
             <number>1</number>
            </property>
            <property name="maximum">
-            <number>10000</number>
+            <number>1000</number>
            </property>
            <property name="singleStep">
             <number>5</number>
@@ -885,6 +909,9 @@ font: 12pt &quot;Comic Sans MS&quot;;</string>
          </item>
          <item row="0" column="1">
           <widget class="QPushButton" name="pushButtonIMG">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
            <property name="minimumSize">
             <size>
              <width>0</width>

@@ -6,6 +6,7 @@
 #include <QCustomPlot/crossline.h>
 #include <USB/ThreadUSB.h>
 #include <USB/CustomUSB.h>
+#include <duthread.h>
 #include <QThread>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -15,6 +16,7 @@ class SignalData;
 class CustomUSB;
 class ThreadUSB;
 class CrossLine;
+class DuThread;
 class QTimer;
 
 
@@ -31,18 +33,20 @@ signals:
     void pushButtonModo(ThreadUSB::Modo mod);
 public slots:
     void ComboBoxUpdate(QString Text);
-    void setValueDialTime(int value);
-    void setValueDialVolt(int value);
     void pushButtonConexion();
     void pushButtonMediciones();
+    void pushButtonSaveIMG();
     void getMesure();
 public slots:
     void actualizarMediciones(SignalData *mediciones); // -> signal mesure(SignalData mediciones)
     void actualizarEstado(bool);
+private slots:
+
 private:
     Ui::MainWindow  *ui;
     CustomUSB       *pCustomUSB;
     ThreadUSB       *pThreadUSB;
     QTimer          *time;
+    DuThread        *pDuThread;
 };
 #endif // MAINWINDOW_H

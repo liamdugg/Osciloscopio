@@ -5,12 +5,43 @@ ThreadUSB::ThreadUSB(CustomUSB *customUSB, QObject *parent)
 {
    pCustomUSB = customUSB;
    modo = Modo::modoSignal;
+   setTime(1);
 }
 
 void ThreadUSB::modChange(Modo mod)
 {
     setModo(mod);
 }
+
+void ThreadUSB::timeChange(SignalData::samplimngFrecuency fs)
+{
+    switch (fs) {
+    case SignalData::fs1:
+        setTime(524);
+        break;
+    case SignalData::fs2:
+        setTime(134);
+        break;
+    case SignalData::fs3:
+        setTime(36);
+        break;
+    case SignalData::fs4:
+        setTime(17);
+        break;
+    case SignalData::fs5:
+        setTime(17);
+        break;
+    case SignalData::fs6:
+        setTime(17);
+        break;
+    case SignalData::fs7:
+        setTime(17);
+        break;
+    default:
+        break;
+    }
+}
+
 
 void ThreadUSB::run()
 {
@@ -23,9 +54,10 @@ void ThreadUSB::run()
                 pCustomUSB->EnviarMensaje(MensajeTX,length);
                 if(pCustomUSB->RecibirMensaje(data)){
                     contador++;
-                    if(contador  == 32){
-                        emit datoNuevoSingnal(&data);
-                        usleep(500);
+                    if(contador  == 16){
+                        emit datoNuevoADC(&data);
+                        msleep(getTime());
+
                         contador = 0;
                     }
                 }
@@ -37,7 +69,7 @@ void ThreadUSB::run()
                 int length = MensajeTX.size();
                 pCustomUSB->EnviarMensaje(MensajeTX,length);
                 if(pCustomUSB->RecibirMensaje(dataSignal)){
-                    emit datoNuevoMesure(dataSignal);
+                    emit datoNuevoMediciones(dataSignal);
                 }
                 modo = modoSignal;
             }            

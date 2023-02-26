@@ -56,9 +56,9 @@ DMA_HandleTypeDef hdma_adc1;
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim5;
 
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 int flag;
 char adc_char[10];
@@ -78,7 +78,6 @@ static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_TIM3_Init(void);
 static void MX_TIM5_Init(void);
 void StartDefaultTask(void const * argument);
 
@@ -419,8 +418,8 @@ void RMS(void)
 void Init_Sistema(void *pvParameters){
 
 	ssd1306_Init();
-	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
-	HAL_TIM_Base_Start(&htim3);
+	//HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
+	HAL_TIM_Base_Start(&htim2);
 	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX);
 	HAL_GPIO_WritePin(MUX_SEL0_GPIO_Port, MUX_SEL0_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(MUX_SEL1_GPIO_Port, MUX_SEL1_Pin, GPIO_PIN_SET);
@@ -491,7 +490,6 @@ int main(void)
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
-  MX_TIM3_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
@@ -516,7 +514,6 @@ int main(void)
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
 
-
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(Init_Sistema,"INICIALIZAR",configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL);
@@ -527,7 +524,6 @@ int main(void)
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
-
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -614,7 +610,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = ENABLE;
@@ -682,97 +678,47 @@ static void MX_TIM2_Init(void)
 {
 
   /* USER CODE BEGIN TIM2_Init 0 */
+	/*
+	htim3.Init.Period = 60;	fs = 700kHz  fmin = 7,142KHz	fmax = 28,57kHz
+	htim3.Init.Period = 168;	fs = 250kHz  fmin = 2560Hz fmax = 10,24kHz
+	htim3.Init.Period = 667;  fs = 63KHz   fmin = 640Hz fmax = 2560Hz
 
+	htim3.Init.Period = 2675; fs=15,7KHz fmin = 160Hz fmax = 640Hz
+	htim3.Init.Period = 10769; fs=3,9KHz fmin = 40Hz fmax = 160Hz
+	htim3.Init.Period = 42857; fs=980Hz fmin = 10Hz fmax = 40Hz
+	*/
   /* USER CODE END TIM2_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 8399;
+  htim2.Init.Prescaler = 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 250;
+  htim2.Init.Period = 2675;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
-
-}
-
-/**
-  * @brief TIM3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM3_Init(void)
-{
-
-  /* USER CODE BEGIN TIM3_Init 0 */
-		//TIMER TRIGGER
-  /* USER CODE END TIM3_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM3_Init 1 */
-  /*
-  htim3.Init.Period = 60;	fs = 700kHz  fmin = 7,142KHz	fmax = 28,57kHz
-  htim3.Init.Period = 168;	fs = 250kHz  fmin = 2560Hz fmax = 10,24kHz
-  htim3.Init.Period = 667;  fs = 63KHz   fmin = 640Hz fmax = 2560Hz
-
-  htim3.Init.Period = 2675; fs=15,7KHz fmin = 160Hz fmax = 640Hz
-  htim3.Init.Period = 10769; fs=3,9KHz fmin = 40Hz fmax = 160Hz
-  htim3.Init.Period = 42857; fs=980Hz fmin = 10Hz fmax = 40Hz
-  */
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 1;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 60;
-
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM3_Init 2 */
-
-  /* USER CODE END TIM3_Init 2 */
 
 }
 

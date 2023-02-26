@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -94,8 +95,9 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 
+osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
-uint32_t buffer_usb[MAX_SIZE];
+uint8_t buffer_usb[2*MAX_SIZE];
 uint32_t buffer_adc[MAX_SIZE];
 uint32_t buffer_display[MAX_SIZE/2];
 
@@ -103,10 +105,25 @@ QueueHandle_t qEncoder;
 QueueHandle_t qTrigger;
 QueueHandle_t qRMS;
 QueueHandle_t qDelay;
+QueueHandle_t qEscala;
 
-//const float parametro1;
+uint8_t bufferAUX[0x64] = "F010.65KRX.XXVFS7G0";
+/*
+ * bufferAUX[0] 	= F
+ * bufferAUX[7]		= K
+ *
+ * bufferAUX[8] 	= R
+ * bufferAUX[13] 	= V
+ *
+ * bufferAUX[15]	= A
+ * buffer
+ *
+ *
+ *
+ * */
+//const float parametro;
 //const float parametro2;
-
+//								"F010.65KHzR707.7mVA3.3VFS0"
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -150,7 +167,7 @@ void int_to_char(uint32_t num, char texto[]){
 }
 */
 void rms_to_char(float rms, char rms_char[]){
-
+	/*RMS = RX.XX/R.XXX*/
 	int entero = (int)rms;							// 1,648 --> entero = 1
 	int decimal = (int)((rms - entero)*1000);		// 1,648 --> decimal = 648
 
@@ -172,6 +189,13 @@ void rms_to_char(float rms, char rms_char[]){
 
 		else if(decimal_3 < 5 && decimal_3 >= 0) rms_char[2] = decimal_2 + '0';
 
+		bufferAUX[8] = 'R';
+		bufferAUX[9] = rms_char[0];
+		bufferAUX[10] = decimal_1 + '0';
+		bufferAUX[11] = decimal_2 + '0';
+		bufferAUX[12] = decimal_3 + '0';
+		bufferAUX[13] = 'V';
+
 	}
 	else if(entero > 0){
 
@@ -186,6 +210,13 @@ void rms_to_char(float rms, char rms_char[]){
 		}
 
 		else if(decimal_2 < 5) rms_char[2] = decimal_1 + '0';
+
+		bufferAUX[8] = 'R';
+		bufferAUX[9] = entero + '0';
+		bufferAUX[10] = '.';
+		bufferAUX[11] = decimal_1 + '0';
+		bufferAUX[12] = decimal_2 + '0';
+		bufferAUX[13] = 'V';
 	}
 	rms_char[3] = 'V';
 	rms_char[4] = '\0';
@@ -198,38 +229,65 @@ void freq_to_char(uint32_t Frecuencia, uint8_t *pData){
 	// Frecuencias entre 10K y 100K
 	if(Frecuencia >= 10000 && Frecuencia < 100000){
 
-		pData[0] = (uint8_t)((Frecuencia/10000) + '0'); 			// 15300/10000  = 1
-		Frecuencia %=10000;                             			// 15300 % 10000 = 5300
-		pData[1] = (uint8_t)((Frecuencia/1000) + '0');  			// 5300 / 1000 = 5
-		Frecuencia %= 1000;                             			// 5300 % 1000 = 300
-		pData[2] = ',';
-		pData[3] = (uint8_t)((Frecuencia/100) + '0');   			// 300 / 100 = 3
+		pData[0] = (uint8_t)((Frecuencia/10000) + '0'); 			// 15310/10000  = 1
+		Frecuencia %=10000;                             			// 15310 % 10000 = 5300
+		pData[1] = (uint8_t)((Frecuencia/1000) + '0');  			// 5310 / 1000 = 5
+		Frecuencia %= 1000;                             			// 5310 % 1000 = 300
+		pData[2] = '.';
+		pData[3] = (uint8_t)((Frecuencia/100) + '0');   			// 310 / 100 = 3
 		pData[4] = 'K';
 		pData[5] = 'H';
+		bufferAUX[2] = pData[0];
+		bufferAUX[3] = pData[1];
+		bufferAUX[4] = pData[2];
+		bufferAUX[5] = pData[3];
+		Frecuencia  %= 100;
+		bufferAUX[6] = (uint8_t)((Frecuencia/10) + '0');
+		bufferAUX[7] = pData[4];
 	}
 
 	// Frecuencias entre 0 y 9999
 	else if(Frecuencia > 0){
 
-		if(Frecuencia <1000) pData[0] = ' ';
-		else pData[0] = (uint8_t)((Frecuencia/1000) + '0'); 		// 9375 / 1000 = 9
+		if(Frecuencia <1000){
+			pData[0] = ' ';
+			bufferAUX[2] = '0';
+		} else {
+			pData[0] = (uint8_t)((Frecuencia/1000) + '0');		// 9375 / 1000 = 9
+			bufferAUX[2] = pData[0];
+		}
 
 		Frecuencia %= 1000;                          				// 9375 % 1000 = 375
-		if(Frecuencia < 100 && pData[0] == ' ') pData[1] = ' ';
-		else pData[1] = (uint8_t)((Frecuencia/100) + '0');  		// 375 / 100 = 3
+		if(Frecuencia < 100 && pData[0] == ' '){
+			pData[1] = ' ';
+			bufferAUX[3] = '0';
+		} else {
+			pData[1] = (uint8_t)((Frecuencia/100) + '0');  		// 375 / 100 = 3
+			bufferAUX[3] = pData[1];
+		}
 
 		Frecuencia %= 100;                             				// 375 % 100 = 75
-		if(Frecuencia < 10 && pData[1] == ' ') pData[2] = ' ';
-		else pData[2] = (uint8_t)((Frecuencia/10) + '0');   		// 75 / 10 = 7
-
+		if(Frecuencia < 10 && pData[1] == ' '){
+			pData[2] = ' ';
+			bufferAUX[4] = '0';
+		} else {
+			pData[2] = (uint8_t)((Frecuencia/10) + '0');   		// 75 / 10 = 7
+			bufferAUX[4] = pData[2];
+		}
 		Frecuencia %= 10;                              				// 75 % 10 = 5
 		pData[3] = (uint8_t)(Frecuencia + '0');        				// 5
 
 		pData[4] = 'H';
 		pData[5] = 'z';
+		bufferAUX[5] = pData[3];
+		bufferAUX[6] = pData[4];
+		bufferAUX[7] = pData[5];
+		// F0XX.XXK
+		// F0XXXXHz
 	}
 
 	pData[6] = '\0';
+
 }
 
 float map(float x, float in_min, float in_max, float out_min, float out_max){
@@ -424,17 +482,24 @@ void display_plot_signal(void){
 		ssd1306_Line(k + 27, y3, k + 28, y4, White);
 	 }
 	display_plot_trigger(nivel_trigger);
-	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX_SIZE);
+	//HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX_SIZE);
 }
 
 void display_plot_rms(void){
 
 	char rms_valor[5];
 	static float valor = 0.0;
+	static float escala = 1;
 
-	if(uxQueueMessagesWaiting(qRMS) == 1)
+	if(uxQueueMessagesWaiting(qEscala) == 1)
+	{
+		xQueueReceive(qEscala, &escala, portMAX_DELAY);
+	}
+	if(uxQueueMessagesWaiting(qRMS) == 1 )
+	{
 		xQueueReceive(qRMS, &valor, portMAX_DELAY);
-
+		valor /= escala;
+	}
 	rms_to_char(valor, rms_valor);
 	ssd1306_SetCursor(56, 0);
 	ssd1306_WriteString("rms",Font_6x8,White);
@@ -588,20 +653,89 @@ void adc_select_frecuencia(int contador){
 
 	switch(contador){
 
-		case ENC_F1: ADC_sampling(FS_1); break;
+		case ENC_F1:
+			ADC_sampling(FS_1);
+			bufferAUX[16] = ENC_F1 + '0';
+			break;
 
-		case ENC_F2: ADC_sampling(FS_2); break;
+		case ENC_F2:
+			ADC_sampling(FS_2);
+			bufferAUX[16] = ENC_F2 + '0';
+			break;
 
-		case ENC_F3: ADC_sampling(FS_3); break;
+		case ENC_F3:
+			ADC_sampling(FS_3);
+			bufferAUX[16] = ENC_F3 + '0';
+			break;
 
-		case ENC_F4: ADC_sampling(FS_4); break;
+		case ENC_F4:
+			ADC_sampling(FS_4);
+			bufferAUX[16] = ENC_F4 + '0';
+			break;
 
-		case ENC_F5: ADC_sampling(FS_5); break;
+		case ENC_F5:
+			ADC_sampling(FS_5);
+			bufferAUX[16] = ENC_F5 + '0';
+			break;
 
-		case ENC_F6: ADC_sampling(FS_6); break;
+		case ENC_F6:
+			ADC_sampling(FS_6);
+			bufferAUX[16] = ENC_F6 + '0';
+			break;
 
-		case ENC_F7: ADC_sampling(FS_7); break;
+		case ENC_F7:
+			ADC_sampling(FS_7);
+			bufferAUX[16] = ENC_F7 + '0';
+			break;
 	}
+}
+
+float modificar_escala(int contador){
+
+	float variable = 1;
+	switch(contador){
+
+		case ATEN_03:
+			variable = 0.287;
+			bufferAUX[18] = ATEN_03 + '0';
+			break;
+
+		case ATEN_05:
+			variable = 0.5;
+			bufferAUX[18] = ATEN_05 + '0';
+			break;
+
+		case AMP_1:
+			variable = 1;
+			bufferAUX[18] = AMP_1 + '0';
+			break;
+
+		case AMP_3:
+			variable = 3.13;
+			bufferAUX[18] = AMP_3 + '0';
+			break;
+
+		case AMP_5:
+			variable = 5;
+			bufferAUX[18] = AMP_5 + '0';
+			break;
+
+		case AMP_10:
+			variable = 10;
+			bufferAUX[18] = AMP_10 + '0';
+			break;
+
+		case AMP_31:
+			variable = 31.33;
+			bufferAUX[18] = AMP_31 + '0';
+			break;
+
+		case AMP_50:
+			variable = 50;
+			bufferAUX[18] = AMP_50 + '0';
+			break;
+	}
+	return variable;
 }
 
 void encoder_pos(void){
@@ -613,6 +747,7 @@ void encoder_pos(void){
 	static int counter_temp = ENC_F6;
 	static int seleccion = 0;
 	static int trigger_level = 2090;
+	static float scale = 1;
 
 	counter_act = TIM4->CNT/2;
 
@@ -624,13 +759,24 @@ void encoder_pos(void){
 		case AMPLITUD: //AMPLITUD
 
 			if(counter_act > counter_viejo && counter_amp < 7)
+			{
 				counter_amp++;
-
+				scale = modificar_escala(counter_amp);
+				xQueueSend(qEscala,&scale,portMAX_DELAY);
+			}
 			else if(counter_act > counter_viejo && counter_amp == 7)
+			{
 				counter_amp = AMP_1;
+				scale = modificar_escala(counter_amp);
+				xQueueSend(qEscala,&scale,portMAX_DELAY);
+			}
 
 			else if(counter_act < counter_viejo && counter_amp > 0)
+			{
 				counter_amp--;
+				scale = modificar_escala(counter_amp);
+				xQueueSend(qEscala,&scale,portMAX_DELAY);
+			}
 
 			mux_select_escala(counter_amp);
 
@@ -667,7 +813,7 @@ void encoder_pos(void){
 		default: break;
 	}
 	xQueueSend(qTrigger,&trigger_level,portMAX_DELAY);
-	//display_plot_trigger(trigger_level);
+
 	display_plot_escala(counter_amp);
 	display_plot_tiempo(counter_temp);
 	display_plot_encoder(seleccion);
@@ -679,6 +825,7 @@ void encoder_pos(void){
 void Init_Sistema(void *pvParameters){
 
 	ssd1306_Init();
+	MX_USB_DEVICE_Init();
 	HAL_TIM_OC_Start(&htim2, TIM_CHANNEL_1);
 	HAL_ADC_Start_DMA(&hadc1, buffer_adc, MAX_SIZE);
 	HAL_TIM_Base_Start(&htim3);
@@ -762,8 +909,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	}
 
 	mean = 2*mean/MAX_SIZE;
-
+	int j = 0;
 	for(int i=0; i<MAX_SIZE; i++){
+		buffer_usb[j] = (uint8_t)((buffer_adc[i]>>8)&0xFF);
+		buffer_usb[j+1] = (uint8_t)((buffer_adc[i])&0xFF);
+		j+=2;
 		suma = (float)(buffer_adc[i]) - mean;
 		suma = suma*(3.3/4095);
 		valorMax = suma*suma+valorMax;
@@ -857,11 +1007,11 @@ int main(void)
   qTrigger = xQueueCreate(1,sizeof(int));
   qRMS = xQueueCreate(1,sizeof(float));
   qDelay = xQueueCreate(1,sizeof(int));
+  qEscala = xQueueCreate(1,sizeof(float));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -875,7 +1025,6 @@ int main(void)
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
-
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -908,12 +1057,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 8;
   RCC_OscInitStruct.PLL.PLLN = 336;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
   RCC_OscInitStruct.PLL.PLLQ = 7;
@@ -1317,6 +1465,8 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)

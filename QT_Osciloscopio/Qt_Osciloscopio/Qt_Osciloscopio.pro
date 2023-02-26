@@ -15,6 +15,7 @@ SOURCES += \
     QCustomPlot/qcustomplot.cpp \
     USB/CustomUSB.cpp \
     USB/ThreadUSB.cpp \
+    duthread.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -26,6 +27,7 @@ HEADERS += \
     QCustomPlot/qcustomplot.h \
     USB/CustomUSB.h \
     USB/ThreadUSB.h \
+    duthread.h \
     mainwindow.h
 
 FORMS += \

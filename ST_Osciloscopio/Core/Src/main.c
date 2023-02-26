@@ -36,14 +36,14 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define	NS				1024
+#define	NS				512
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 extern uint32_t Wave_LUT[NS];
 uint32_t adc_buffer[NS];
-uint8_t bufferTx[2048];
+uint8_t bufferTx[1024];
 uint8_t flag = 0;
 int trigger_point = 1;
 int trigger_level = 2048;
@@ -98,7 +98,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	  bufferTx[j+1] = (uint8_t)((adc_buffer[i])&0xFF);
 	  j+=2;
 	}
-
 }
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 	/*
@@ -499,7 +498,15 @@ static void MX_TIM3_Init(void)
 {
 
   /* USER CODE BEGIN TIM3_Init 0 */
+	/*
+	  htim3.Init.Period = 60;	fs = 700kHz  fmin = 7,142KHz	fmax = 28,57kHz
+	  htim3.Init.Period = 168;	fs = 250kHz  fmin = 2560Hz fmax = 10,24kHz
+	  htim3.Init.Period = 667;  fs = 63KHz   fmin = 640Hz fmax = 2560Hz
 
+	  htim3.Init.Period = 2675; fs=15,7KHz fmin = 160Hz fmax = 640Hz
+	  htim3.Init.Period = 10769; fs=3,9KHz fmin = 40Hz fmax = 160Hz
+	  htim3.Init.Period = 42857; fs=980Hz fmin = 10Hz fmax = 40Hz
+	*/
   /* USER CODE END TIM3_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
@@ -509,9 +516,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 131-1;
+  htim3.Init.Period = 2675-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)

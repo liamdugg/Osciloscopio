@@ -29,13 +29,16 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
-#define	NS				1024
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+#define	NS				512
 extern ADC_HandleTypeDef hadc1;
 extern uint32_t adc_buffer[NS];
+extern uint8_t pData[10];
 uint8_t buffer[0x40];
-extern uint8_t bufferTx[2048];
+uint8_t bufferAUX[0x64] = "A3.3VR707.7mVF10.65KHzFS4";
+extern uint8_t bufferTx[1024];
 extern uint8_t flag;
 /* USER CODE END PV */
 
@@ -93,43 +96,29 @@ extern uint8_t flag;
   */
 
 /** Usb HID report descriptor. */
-/** Usb HID report descriptor. */
 __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DESC_SIZE] __ALIGN_END =
 {
-/* USER CODE BEGIN 0 */
-0x06, 0x00, 0xff,
-//Usage Page(Undefined
-0x09, 0x01,
-// USAGE (
-0xa1, 0x01,
-// COLLECTION (
-0x15, 0x00,
-// LOGICAL_MINIMUM (
-0x26, 0xff, 0x00,
-// LOGICAL_MAXIMUM (
-0x75, 0x08,
-// REPORT_SIZE (
-0x95, 0x40,
-// REPORT_COUNT (
-0x09, 0x01,
-// USAGE (
-0x81, 0x02,
-// INPUT Data,Var,Abs
-0x95, 0x40,
-// REPORT_COUNT (
-0x09, 0x01,
-// USAGE (
-0x91, 0x02,
-// OUTPUT Data,Var,Abs
-0x95, 0x01,
-// REPORT_COUNT (
-0x09, 0x01,
-// USAGE (
-0xb1, 0x02,
-// FEATURE Data,Var,Abs
-/* USER CODE END 0 */
-0xC0	/* END_COLLECTION */
+		/* USER CODE BEGIN 0 */
+		0x06, 0x00, 0xff, // Usage Page(Undefined )
+		0x09, 0x01, // USAGE (Undefined)
+		0xa1, 0x01, // COLLECTION (Application)
+		0x15, 0x00, // LOGICAL_MINIMUM (0)
+		0x26, 0xff, 0x00, // LOGICAL_MAXIMUM (255)
+		0x75, 0x08, // REPORT_SIZE (8)
+		0x95, 0x40, // REPORT_COUNT (64)
+		0x09, 0x01, // USAGE (Undefined)
+		0x81, 0x02, // INPUT (Data,Var,Abs)
+		0x95, 0x40, // REPORT_COUNT (64)
+		0x09, 0x01, // USAGE (Undefined)
+		0x91, 0x02, // OUTPUT (Data,Var,Abs)
+		0x95, 0x01, // REPORT_COUNT (1)
+		0x09, 0x01, // USAGE (Undefined)
+		0xb1, 0x02, // FEATURE (Data,Var,Abs)
+		/* USER CODE END 0 */
+		0xC0 /* END_COLLECTION */
+
 };
+
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 
 /* USER CODE END PRIVATE_VARIABLES */
@@ -158,7 +147,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 static int8_t CUSTOM_HID_Init_FS(void);
 static int8_t CUSTOM_HID_DeInit_FS(void);
-static int8_t CUSTOM_HID_OutEvent_FS(uint8_t * state);
+static int8_t CUSTOM_HID_OutEvent_FS(uint8_t *state);
 
 /**
   * @}
@@ -207,9 +196,9 @@ static int8_t CUSTOM_HID_DeInit_FS(void)
   * @param  state: Event state
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* state)
+static int8_t CUSTOM_HID_OutEvent_FS(uint8_t *state)
 {
-	/* USER CODE BEGIN 6 */
+  /* USER CODE BEGIN 6 */
 	memcpy (buffer, state, 0x40);
 	/* Start next USB packet transfer once data processing is completed */
 	static uint32_t k = 0;
@@ -218,17 +207,22 @@ static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* state)
 		USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS);
 		USBD_CUSTOM_HID_SendReport (&hUsbDeviceFS, &bufferTx[k], 64);
 		k += 64;
-		if(k==2048){
+		if(k==1024){
 			HAL_ADC_Start_DMA(&hadc1, adc_buffer, NS);
-			flag = 1;
 			k=0;
 		}
 	}
-	if(buffer[0] == '$'){
+	if(buffer[0] == 'C'){
 		k=0;
 	}
+	if(buffer[0] == 'D'){
+			k=0;
+	}
+	if(buffer[0] == '$'){
+		USBD_CUSTOM_HID_SendReport (&hUsbDeviceFS, &bufferAUX[0], 25);
+	}
 	return (USBD_OK);
-	/* USER CODE END 6 */
+  /* USER CODE END 6 */
 }
 
 /* USER CODE BEGIN 7 */
@@ -260,6 +254,4 @@ static int8_t USBD_CUSTOM_HID_SendReport_FS(uint8_t *report, uint16_t len)
 /**
   * @}
   */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 

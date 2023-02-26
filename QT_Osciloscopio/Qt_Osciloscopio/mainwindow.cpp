@@ -10,9 +10,10 @@ MainWindow::MainWindow(QWidget *parent)
     pCustomUSB = new CustomUSB();
     pThreadUSB = new ThreadUSB(pCustomUSB, this);
     time = new QTimer(this);
-    connect(pThreadUSB, &ThreadUSB::datoNuevoSingnal, pCustomPlot, &CustomPlot::LeerSignal);
-    connect(pThreadUSB, &ThreadUSB::datoNuevoMesure, pCustomPlot, &CustomPlot::LeerMesure);
+    connect(pThreadUSB, &ThreadUSB::datoNuevoADC, pCustomPlot, &CustomPlot::LeerADC);
+    connect(pThreadUSB, &ThreadUSB::datoNuevoMediciones, pCustomPlot, &CustomPlot::LeerMediciones);
     connect(ui->pushButtonAUTO, &QPushButton::clicked, pCustomPlot, &CustomPlot::pushButtonAutoEscala);
+    connect(ui->pushButtonIMG, &QPushButton::clicked, this, &MainWindow::pushButtonSaveIMG);
     connect(pCustomPlot, &CustomPlot::mesure, this, &MainWindow::actualizarMediciones);
 
     QComboBox *comboBoxModo = ui->comboBoxModo;
@@ -52,9 +53,20 @@ MainWindow::MainWindow(QWidget *parent)
     crossLine2->setLineVisible(Qt::Horizontal, false);
     crossLine2->setLineVisible(Qt::Vertical, false);
 
+    connect(ui->dialTime, &QDial::valueChanged, pCustomPlot, &CustomPlot::setValueDialTime);
+    connect(ui->dialVolt, &QDial::valueChanged, pCustomPlot, &CustomPlot::setValueDialVolt);
+    /* Valores del dial Maximo y Minimo */
+    pCustomPlot->setRangeDialTime(ui->dialTime->maximum(),ui->dialTime->minimum());
+
+    connect(pCustomPlot, &CustomPlot::setTimeChange,pThreadUSB, &ThreadUSB::timeChange);
     InicializarUSB();
     actualizarEstado(false);
-    initDial();
+    /* Para una version futura */
+    /*
+    ui->qCustomPlot->axisRect()->setBackgroundScaled(true);
+    ui->qCustomPlot->axisRect()->setBackgroundScaledMode(Qt::AspectRatioMode::IgnoreAspectRatio);
+    ui->qCustomPlot->axisRect()->setBackground(QPixmap(":/Img/Osciloscopio.png"));
+    */
 }
 
 MainWindow::~MainWindow()
@@ -69,12 +81,6 @@ void MainWindow::InicializarUSB()
     connect(this, &MainWindow::pushButtonModo, pThreadUSB, &ThreadUSB::modChange);
     connect(time, &QTimer::timeout, this, &MainWindow::getMesure);
     connect(pCustomUSB, &CustomUSB::statusChange, this, &MainWindow::actualizarEstado);
-}
-
-void MainWindow::initDial()
-{
-    connect(ui->dialTime, &QDial::valueChanged, this, &MainWindow::setValueDialTime);
-    connect(ui->dialVolt, &QDial::valueChanged, this, &MainWindow::setValueDialVolt);
 }
 
 void MainWindow::ComboBoxUpdate(QString Text)
@@ -96,23 +102,12 @@ void MainWindow::ComboBoxUpdate(QString Text)
     }
 }
 
-void MainWindow::setValueDialTime(int value)
-{
-    ui->qCustomPlot->xAxis->setRange((double)(-(0.00079*value+0.04925)), (double)(0.00079*value+0.04925));
-    ui->qCustomPlot->replot();
-}
-
-void MainWindow::setValueDialVolt(int value)
-{
-    ui->qCustomPlot->yAxis->setRange(-value/1000.0, value/1000.0);
-    ui->qCustomPlot->replot();
-}
 void MainWindow::pushButtonConexion()
 {
     if(!pCustomUSB->estadoConexion()){
         emit pushButtonModo(ThreadUSB::modoConected);
         if(pCustomUSB->conectar()){
-            qDebug() << "Conectando...";
+            //qDebug() << "Conectando...";
             pThreadUSB->start();
         }
     } else {
@@ -123,7 +118,7 @@ void MainWindow::pushButtonConexion()
         /* tiempo hasta que envie el aviso de desconexion */
         Sleep(1);
         if(pCustomUSB->desconectar()){
-            qDebug() << "Desconectando...";
+            //qDebug() << "Desconectando...";
             pThreadUSB->terminate();
         }
     }
@@ -137,12 +132,14 @@ void MainWindow::pushButtonMediciones()
             ui->pushButtonCH1->setText("DETENER MEDICION");
             ui->pushButtonCH1->setStyleSheet("font-weight: bold; color: white; background-color: lightgreen;");
             emit pushButtonModo(ThreadUSB::modoSignal);
+            ui->pushButtonIMG->setEnabled(false);
             time->start(1000);
             var = false;
         } else {
             ui->pushButtonCH1->setText("INICIAR MEDICION");
             ui->pushButtonCH1->setStyleSheet("font-weight: bold; color: black; background-color: lightgreen;");
             emit pushButtonModo(ThreadUSB::modoNone);
+            ui->pushButtonIMG->setEnabled(true);
             time->stop();
             var = true;
         }
@@ -171,7 +168,6 @@ void MainWindow::actualizarEstado(bool estado)
         ui->groupBoxCH1->setEnabled(true);
         ui->groupBoxCH2->setDisabled(true);
         ui->groupBoxCursor->setEnabled(true);
-        ui->groupBoxEscala->setEnabled(true);
         ui->groupBoxAUTO->setEnabled(true);
         //emit ui->comboBoxModo->currentTextChanged("Ninguno");
     } else {
@@ -181,7 +177,26 @@ void MainWindow::actualizarEstado(bool estado)
         ui->groupBoxCH1->setDisabled(true);
         ui->groupBoxCH2->setDisabled(true);
         ui->groupBoxCursor->setDisabled(true);
-        ui->groupBoxEscala->setDisabled(true);
         ui->groupBoxAUTO->setDisabled(true);
     }
 }
+
+void MainWindow::pushButtonSaveIMG()
+{
+    QString filename = QFileDialog::getSaveFileName();
+    qDebug() << "Guardando Imagen...";
+    if(filename == ""){
+
+    }
+    if(filename.endsWith(".png"))
+        ui->qCustomPlot->savePng(filename, ui->qCustomPlot->width(), ui->qCustomPlot->height());
+    else if(filename.endsWith(".jpg"))
+        ui->qCustomPlot->saveJpg(filename, ui->qCustomPlot->width(), ui->qCustomPlot->height());
+    else if(filename.endsWith(".bmp"))
+        ui->qCustomPlot->saveBmp(filename, ui->qCustomPlot->width(), ui->qCustomPlot->height());
+    else
+        qDebug() << "No se pudo guardar...";
+}
+
+
+
