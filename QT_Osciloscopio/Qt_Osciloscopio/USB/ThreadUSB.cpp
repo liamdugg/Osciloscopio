@@ -26,16 +26,16 @@ void ThreadUSB::timeChange(SignalData::samplimngFrecuency fs)
         setTime(36);
         break;
     case SignalData::fs4:
-        setTime(17);
+        setTime(25);
         break;
     case SignalData::fs5:
-        setTime(17);
+        setTime(25);
         break;
     case SignalData::fs6:
-        setTime(17);
+        setTime(25);
         break;
     case SignalData::fs7:
-        setTime(17);
+        setTime(25);
         break;
     default:
         break;
@@ -57,9 +57,11 @@ void ThreadUSB::run()
                     if(contador  == 16){
                         emit datoNuevoADC(&data);
                         msleep(getTime());
-
                         contador = 0;
                     }
+                } else {
+                    contador = 0;
+                    msleep(1);
                 }
             }
         }

@@ -93,11 +93,14 @@ quint8 CustomUSB::RecibirMensaje(QVector<double> &L)
         for(int i = 0; i<actual_length; i++)
             dato[i] = RxData[i];
         quint16 *p = (quint16*) dato.data();
+        dato.clear();
         for (int i=0; i<actual_length/2; i++) {
             L << qFromBigEndian(p[i]);
         }
         if(L.size()>512){
-            qDebug() << "Error de desvorde";
+            qDebug() << "Error de desvorde: " << L.size();
+            L.clear();
+            return 0;
         }
         return 1;
     }

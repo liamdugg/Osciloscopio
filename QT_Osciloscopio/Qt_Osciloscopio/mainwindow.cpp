@@ -56,11 +56,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->dialTime, &QDial::valueChanged, pCustomPlot, &CustomPlot::setValueDialTime);
     connect(ui->dialVolt, &QDial::valueChanged, pCustomPlot, &CustomPlot::setValueDialVolt);
     /* Valores del dial Maximo y Minimo */
-    pCustomPlot->setRangeDialTime(ui->dialTime->maximum(),ui->dialTime->minimum());
 
     connect(pCustomPlot, &CustomPlot::setTimeChange,pThreadUSB, &ThreadUSB::timeChange);
+    connect(pCustomPlot, &CustomPlot::setValueDialTimeMaximiun, this, &MainWindow::setValueDialTime);
     InicializarUSB();
     actualizarEstado(false);
+    ui->dialVolt->setValue(ui->dialVolt->maximum());
     /* Para una version futura */
     /*
     ui->qCustomPlot->axisRect()->setBackgroundScaled(true);
@@ -179,6 +180,12 @@ void MainWindow::actualizarEstado(bool estado)
         ui->groupBoxCursor->setDisabled(true);
         ui->groupBoxAUTO->setDisabled(true);
     }
+}
+
+void MainWindow::setValueDialTime()
+{
+    ui->dialTime->setValue(ui->dialTime->maximum());
+    emit ui->dialTime->valueChanged(ui->dialTime->maximum());
 }
 
 void MainWindow::pushButtonSaveIMG()

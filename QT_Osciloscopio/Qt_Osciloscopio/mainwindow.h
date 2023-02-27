@@ -40,6 +40,7 @@ public slots:
 public slots:
     void actualizarMediciones(SignalData *mediciones); // -> signal mesure(SignalData mediciones)
     void actualizarEstado(bool);
+    void setValueDialTime();
 private slots:
 
 private:

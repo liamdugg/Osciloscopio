@@ -28,6 +28,7 @@ Q_SIGNALS:
 
     void setTimeChange(SignalData::samplimngFrecuency);
     void mesure(SignalData *signalData);
+    void setValueDialTimeMaximiun();
 public slots:
     void pushButtonAutoEscala();
     void LeerADC(QVector<double> *dato);
@@ -38,7 +39,7 @@ public slots:
     void setValueDialTime(int value);
     void setValueDialVolt(int value);
     void setRangeDialGraph();
-
+    void setValueDialTimeMax();
     // QWidget interface
 protected:
     virtual void mousePressEvent(QMouseEvent *event) Q_DECL_OVERRIDE;

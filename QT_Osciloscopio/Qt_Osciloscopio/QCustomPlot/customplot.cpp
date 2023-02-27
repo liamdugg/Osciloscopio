@@ -8,6 +8,7 @@ CustomPlot::CustomPlot(QWidget *parent)
     setSelectionTolerance(6);
     InitGraph();
     signalData = new SignalData;
+    connect(signalData, &SignalData::valueChangeDial, this, &CustomPlot::setValueDialTimeMax);
 }
 
 CustomPlot::~CustomPlot()
@@ -237,8 +238,11 @@ QString CustomPlot::convertirVrms(QString s)
 
 void CustomPlot::pushButtonAutoEscala()
 {
+    /*
     QCustomPlot::graph()->rescaleAxes();
     QCustomPlot::replot();
+    */
+    emit setValueDialTimeMax();
 }
 
 void CustomPlot::LeerADC(QVector<double> *dato)
@@ -246,10 +250,11 @@ void CustomPlot::LeerADC(QVector<double> *dato)
     datoADC << *dato;
     dato->clear();
     double value;
+    double amplitudPico = 0;
     double trigger_point = 256;
     double i;
     double trigger_level =  2048;
-    for(int k = 190; k <=500 ; k++){
+    for(int k = 210; k <=500 ; k++){
         // flanco descendente
         if((datoADC[k-1] < trigger_level ) && (datoADC[k]) > trigger_level ){
             trigger_point = k;
@@ -260,9 +265,13 @@ void CustomPlot::LeerADC(QVector<double> *dato)
     QCustomPlot::graph()->data().data()->clear();
     while(!datoADC.isEmpty()){
         value = (datoADC.takeFirst()-2048)*(3.3/4096.0)/signalData->getFactor();
+        if(value > amplitudPico){
+            amplitudPico = value;
+        }
         QCustomPlot::graph()->addData(i,value);
         i +=signalData->getSamplingFrecuency();
     }
+    signalData->setAmplitude(QString::number(2*amplitudPico,'f',2)+" Vpp");
     datoADC.clear();
     QCustomPlot::replot();
 }
@@ -272,7 +281,7 @@ void CustomPlot::LeerMediciones(QString dato)
     /* Procesamiento de mediciones */
     signalData->setFrecuncy(convertir(dato,frecuencia));
     signalData->setPeriod(convertir(dato,tiempo));
-    signalData->setAmplitude(convertir(dato,Amplitud));
+    signalData->setAmplitude(signalData->getAmplitude());
     signalData->setVrms(convertir(dato,Vrms));
     signalData->setSamplingFrecuency(convertirFS(dato));
     signalData->setScaleFactor(convertirScaleFactor(dato));
@@ -282,9 +291,8 @@ void CustomPlot::LeerMediciones(QString dato)
 
 void CustomPlot::setValueDialTime(int value)
 {
-    double a =125/2664.0; //395/1998.0;
-    double b =1025/333.0; //12290/999.0;
-    QCustomPlot::xAxis->setRange((double)(-(a*value+b)), (double)(a*value+b));
+    QCustomPlot::xAxis->setRange((double)(-(signalData->getA()*value+signalData->getB())),
+                                 (double)(signalData->getA()*value+signalData->getB()));
     QCustomPlot::replot();
 }
 
@@ -301,11 +309,11 @@ void CustomPlot::setRangeDialGraph()
 
 }
 
-void CustomPlot::setRangeDialTime(int xmin, int xmax)
+void CustomPlot::setValueDialTimeMax()
 {
-    signalData->setXmax((double)xmax);
-    signalData->setXmin((double)xmin);
+    emit setValueDialTimeMaximiun();
 }
+
 
 void CustomPlot::mousePressEvent(QMouseEvent *event)
 {
